@@ -1,0 +1,15 @@
+{
+  "name": "backend-practice",
+  "version": "1.0.0",
+  "description": "A backend practice project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "backend",
+    "javascript"
+  ],
+  "author": "Md Enam ahmed chowdhury",
+  "license": "ISC"
+}
