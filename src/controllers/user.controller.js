@@ -164,7 +164,7 @@ const loggedOutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User Logged Out Successfuly"));
 });
 
-const refreshAccessToken = asyncHandler(async () => {
+const refreshAccessToken = asyncHandler(async (req, res) => {
   const incommingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
@@ -207,5 +207,7 @@ const refreshAccessToken = asyncHandler(async () => {
     throw new ApiError(401, error?.message || "Invalid Refresh Token");
   }
 });
+
+
 
 export { registerUser, loginUser, loggedOutUser, refreshAccessToken };
