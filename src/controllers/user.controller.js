@@ -436,5 +436,5 @@ export {
   updateUserAvatar,
   updateUserCover,
   getUserChanelProfile,
-  getWatcHistory
+  getWatcHistory,
 };
