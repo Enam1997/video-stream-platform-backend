@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import Jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -218,14 +219,16 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   await user.save;
   ({ validateBeforeSave: false });
-  return res.status(200).json(200, {}, "password Change Succesfully");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "password Change Succesfully"));
 });
 
 // Get Current User
 const getCurrentUsser = asyncHandler(async (req, res) => {
   return res
     .status(200)
-    .json(200, req.user, "Current user fetched succesfully");
+    .json(new ApiResponse(200, req.user, "Current user fetched succesfully"));
 });
 
 const updateAccountDetials = asyncHandler(async (req, res) => {
@@ -236,7 +239,7 @@ const updateAccountDetials = asyncHandler(async (req, res) => {
   if (!fullName || !email) {
     throw new ApiError(400, "All fields are required");
   }
-  const user = User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -284,6 +287,8 @@ const updateUserCover = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Cover Image files are missing");
   }
 
+  // Need To add a utily function for remove the previous image from cloudinary
+
   const coverImage = await uploadOnCloudinary(coverLocalPath);
 
   if (!coverImage.url) {
@@ -300,6 +305,126 @@ const updateUserCover = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Cover Image Update Successfuly"));
 });
 
+const getUserChanelProfile = asyncHandler(async (req, res) => {
+  const { userName } = req.params;
+
+  if (!userName?.trim()) {
+    throw new ApiError(400, "Username is missing");
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: {
+        userName: userName?.toLowerCase(),
+      },
+    },
+    {
+      $lookup: {
+        from: "Subscription",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    {
+      $lookup: {
+        from: "Subscription",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $addFields: {
+        subscribersCount: {
+          $size: "$subscribers",
+        },
+        channelsSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        userName: 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar: 1,
+        coverImage: 1,
+      },
+    },
+  ]);
+
+  if (!channel?.length) {
+    throw new ApiError(404, "Chanek Doees not exist");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, channel[0], "User Channel Fetched succesfully"));
+});
+
+const getWatcHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    userName: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: { $first: "$owner" },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "Wattched History Fetched Succesfully"
+      )
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -310,4 +435,6 @@ export {
   updateAccountDetials,
   updateUserAvatar,
   updateUserCover,
+  getUserChanelProfile,
+  getWatcHistory
 };
