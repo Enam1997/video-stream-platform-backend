@@ -39,7 +39,7 @@ router
 
 router
   .route("/cover-image")
-  .patch(verifyJWT, upload.single("/coverImage"), updateUserCover);
+  .patch(verifyJWT, upload.single("coverImage"), updateUserCover);
 
 router.route("/c/:userName").get(verifyJWT, getUserChanelProfile);
 router.route("/history").get(verifyJWT, getWatcHistory);
